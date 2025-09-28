@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,20 +14,19 @@ import {
   MapPin, 
   User, 
   Phone,
-  DollarSign
+  Banknote,
+  PenTool
 } from 'lucide-react';
-
-interface Contract {
-  id: number;
-  customer_name: string;
-  customer_phone: string;
-  property_address: string;
-  price: number;
-  start_date: string;
-  end_date: string;
-  memo?: string;
-  created_at: string;
-}
+import type { 
+  Contract
+} from '@/utils/contract';
+import { 
+  formatContractDate, 
+  formatContractPrice, 
+  getContractStatusBadge, 
+  getContractTypeLabel,
+  formatContractPeriod
+} from '@/utils/contract';
 
 export default function ContractPreview() {
   const { id } = useParams<{ id: string }>();
@@ -126,29 +125,21 @@ export default function ContractPreview() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price) + '원';
+  const getSignatureRoleLabel = (role: string) => {
+    const roleMap = {
+      'SELLER': '매도인',
+      'BUYER': '매수인',
+      'LESSOR': '임대인',
+      'LESSEE': '임차인',
+      'AGENT': '중개인',
+      'BROKER': '중개인'
+    };
+    return roleMap[role as keyof typeof roleMap] || role;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const getContractStatus = (startDate: string, endDate: string) => {
-    const now = new Date();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (now < start) {
-      return { label: '계약 예정', variant: 'secondary' as const };
-    } else if (now >= start && now <= end) {
-      return { label: '진행 중', variant: 'default' as const };
-    } else {
-      return { label: '종료', variant: 'outline' as const };
+  const handlePdfView = () => {
+    if (contract) {
+      window.open(`/api/contracts/${contract.id}/pdf/preview?include=signatures,stamps`, '_blank');
     }
   };
 
@@ -179,7 +170,8 @@ export default function ContractPreview() {
     );
   }
 
-  const status = getContractStatus(contract.start_date, contract.end_date);
+  const status = getContractStatusBadge(contract.status || 'DRAFT');
+  const contractType = getContractTypeLabel(contract.type);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -199,6 +191,13 @@ export default function ContractPreview() {
               <p className="text-gray-600">계약서 정보를 확인하고 PDF를 다운로드하세요</p>
             </div>
             <div className="flex gap-2">
+              <Button
+                onClick={handlePdfView}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                PDF 미리보기
+              </Button>
               <Button
                 onClick={handleDownloadPDF}
                 disabled={pdfLoading}
@@ -225,47 +224,109 @@ export default function ContractPreview() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle className="text-xl">계약서 정보</CardTitle>
-                <Badge variant={status.variant}>{status.label}</Badge>
+                <CardTitle className="text-xl">{contractType}계약서 정보</CardTitle>
+                <div className="flex gap-2">
+                  <Badge variant={status.variant}>{status.label}</Badge>
+                  <Badge variant="outline">문서번호: {contract.doc_no}</Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <User className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">고객명</p>
-                      <p className="font-semibold text-lg">{contract.customer_name}</p>
+              {contract.type === 'SALE' ? (
+                // 매매계약서 정보
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <User className="w-5 h-5 text-blue-500" />
+                        <div>
+                          <p className="text-sm text-gray-600">매수인</p>
+                          <p className="font-semibold text-lg">{contract.buyer_name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Phone className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm text-gray-600">매수인 연락처</p>
+                          <p className="font-semibold">{contract.buyer_phone}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <User className="w-5 h-5 text-green-500" />
+                        <div>
+                          <p className="text-sm text-gray-600">매도인</p>
+                          <p className="font-semibold text-lg">{contract.seller_name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Phone className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm text-gray-600">매도인 연락처</p>
+                          <p className="font-semibold">{contract.seller_phone}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">연락처</p>
-                      <p className="font-semibold">{contract.customer_phone}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">부동산 주소</p>
+                        <p className="font-semibold">{contract.property_address}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Banknote className="w-5 h-5 text-purple-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">매매금액</p>
+                        <p className="font-semibold text-lg text-purple-600">
+                          {formatContractPrice(contract)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <MapPin className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">부동산 주소</p>
-                      <p className="font-semibold">{contract.property_address}</p>
+              ) : (
+                // 임대차/전세/월세/반전세 계약서 정보
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <User className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">고객명</p>
+                        <p className="font-semibold text-lg">{contract.buyer_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Phone className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">연락처</p>
+                        <p className="font-semibold">{contract.buyer_phone}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <DollarSign className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">임대료</p>
-                      <p className="font-semibold text-lg text-blue-600">
-                        {formatPrice(contract.price)}
-                      </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">부동산 주소</p>
+                        <p className="font-semibold">{contract.property_address}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Banknote className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">계약 금액</p>
+                        <p className="font-semibold text-lg text-blue-600">
+                          {formatContractPrice(contract)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -280,22 +341,89 @@ export default function ContractPreview() {
                 <div>
                   <p className="text-sm text-gray-600">계약 기간</p>
                   <p className="font-semibold text-lg">
-                    {formatDate(contract.start_date)} ~ {formatDate(contract.end_date)}
+                    {formatContractPeriod(contract)}
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* 서명 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <PenTool className="w-5 h-5" />
+                서명
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(() => {
+                  // 계약 유형에 따른 서명 역할 결정
+                  const getSignatureRoles = (contractType: string) => {
+                    switch (contractType) {
+                      case 'SALE':
+                        return ['SELLER', 'BUYER', 'AGENT'];
+                      case 'JEONSE':
+                      case 'WOLSE':
+                        return ['LESSOR', 'LESSEE', 'BROKER'];
+                      default:
+                        return ['SELLER', 'BUYER', 'AGENT'];
+                    }
+                  };
+                  
+                  return getSignatureRoles(contract?.type || 'SALE');
+                })().map((role) => {
+                  const signature = contract.signatures?.find(sig => sig.role === role);
+                  return (
+                    <div key={role} className="border rounded-lg p-4 text-center">
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        {getSignatureRoleLabel(role)}
+                      </h4>
+                      {signature && signature.image_url ? (
+                        <div>
+                          <img 
+                            src={signature.image_url}
+                            alt={`${getSignatureRoleLabel(role)} 서명`}
+                            className="w-32 h-16 mx-auto border rounded mb-2"
+                            onError={(e) => {
+                              // 이미지 로드 실패 시 서명 대기 표시
+                              const container = e.currentTarget.parentElement;
+                              if (container) {
+                                container.innerHTML = `
+                                  <div class="w-32 h-16 mx-auto border rounded mb-2 flex items-center justify-center bg-gray-50">
+                                    <span class="text-xs text-gray-500">서명 대기</span>
+                                  </div>
+                                  <p class="text-xs text-gray-500">서명하지 않음</p>
+                                `;
+                              }
+                            }}
+                          />
+                          <p className="text-xs text-gray-500">
+                            {formatContractDate(signature.signed_at)}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="w-32 h-16 mx-auto border rounded mb-2 flex items-center justify-center bg-gray-50">
+                          <span className="text-xs text-gray-500">서명 대기</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* 특이사항 */}
-          {contract.memo && (
+          {contract.special_terms && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">특이사항</CardTitle>
+                <CardTitle className="text-xl">특약사항</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-700 whitespace-pre-wrap">{contract.memo}</p>
+                  <p className="text-gray-700 whitespace-pre-wrap">{contract.special_terms}</p>
                 </div>
               </CardContent>
             </Card>
@@ -307,14 +435,26 @@ export default function ContractPreview() {
               <CardTitle className="text-xl">계약서 정보</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600">계약서 ID</p>
                   <p className="font-semibold">#{contract.id}</p>
                 </div>
                 <div>
+                  <p className="text-gray-600">문서번호</p>
+                  <p className="font-semibold">{contract.doc_no}</p>
+                </div>
+                <div>
                   <p className="text-gray-600">작성일</p>
-                  <p className="font-semibold">{formatDate(contract.created_at)}</p>
+                  <p className="font-semibold">{formatContractDate(contract.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">문서 해시</p>
+                  <p className="font-mono text-xs">{contract.short_hash}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">수정일</p>
+                  <p className="font-semibold">{formatContractDate(contract.updated_at)}</p>
                 </div>
               </div>
             </CardContent>

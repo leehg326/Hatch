@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,19 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
-import { Search, Plus, FileText, Calendar, MapPin, User, Phone } from 'lucide-react';
-
-interface Contract {
-  id: number;
-  customer_name: string;
-  customer_phone: string;
-  property_address: string;
-  price: number;
-  start_date: string;
-  end_date: string;
-  memo?: string;
-  created_at: string;
-}
+import { Search, FileText, Calendar, MapPin, User, Phone, Plus, Trash2 } from 'lucide-react';
+import type { Contract } from '@/utils/contract';
+import { 
+  formatContractDate, 
+  formatContractPrice, 
+  getContractStatusBadge, 
+  getContractTypeLabel,
+  formatContractPeriod,
+  autoStatus
+} from '@/utils/contract';
+import dayjs from 'dayjs';
 
 export default function Contracts() {
   const navigate = useNavigate();
@@ -56,6 +54,31 @@ export default function Contracts() {
     }
   };
 
+  const handleDeleteContract = async (contractId: number) => {
+    if (!confirm('정말로 이 계약서를 삭제하시겠습니까?\n삭제된 계약서는 복구할 수 없습니다.')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/contracts/${contractId}`);
+      
+      toast({
+        title: '계약서가 삭제되었습니다',
+        description: '계약서가 성공적으로 삭제되었습니다.',
+      });
+      
+      // 목록 새로고침
+      fetchContracts(currentPage, searchQuery);
+    } catch (error: any) {
+      console.error('Error deleting contract:', error);
+      toast({
+        title: '계약서 삭제에 실패했습니다',
+        description: error.response?.data?.error || '잠시 후 다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   useEffect(() => {
     fetchContracts();
   }, []);
@@ -69,26 +92,15 @@ export default function Contracts() {
     navigate(`/contracts/${contractId}`);
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price) + '원';
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR');
-  };
-
-  const getContractStatus = (startDate: string, endDate: string) => {
-    const now = new Date();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (now < start) {
-      return { label: '계약 예정', variant: 'secondary' as const };
-    } else if (now >= start && now <= end) {
-      return { label: '진행 중', variant: 'default' as const };
-    } else {
-      return { label: '종료', variant: 'outline' as const };
-    }
+  const getContractStatus = (contract: Contract) => {
+    const { schedule } = contract;
+    if (!schedule) return getContractStatusBadge('DRAFT');
+    
+    const startDate = dayjs(schedule.contract_date || schedule.middle_date);
+    const endDate = dayjs(schedule.handover_date || schedule.transfer_date);
+    
+    const status = contract.status || autoStatus(startDate, endDate);
+    return getContractStatusBadge(status);
   };
 
   return (
@@ -100,13 +112,6 @@ export default function Contracts() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">계약서 관리</h1>
               <p className="text-gray-600">부동산 임대차 계약서를 관리하세요</p>
             </div>
-            <Button
-              onClick={() => navigate('/contracts/new')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              새 계약서
-            </Button>
           </div>
 
           {/* 검색 바 */}
@@ -149,7 +154,11 @@ export default function Contracts() {
         ) : (
           <div className="space-y-4">
             {contracts.map((contract) => {
-              const status = getContractStatus(contract.start_date, contract.end_date);
+              const status = getContractStatus(contract);
+              const typeLabel = getContractTypeLabel(contract.type);
+              const priceText = formatContractPrice(contract);
+              const periodText = formatContractPeriod(contract);
+              
               return (
                 <Card
                   key={contract.id}
@@ -161,14 +170,17 @@ export default function Contracts() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-xl font-semibold text-gray-900">
-                            {contract.customer_name}
+                            {contract.seller_name} → {contract.buyer_name}
                           </h3>
+                          <Badge variant="outline" className="text-xs">
+                            {typeLabel}
+                          </Badge>
                           <Badge variant={status.variant}>{status.label}</Badge>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <Phone className="w-4 h-4" />
-                            <span>{contract.customer_phone}</span>
+                            <span>{contract.seller_phone} / {contract.buyer_phone}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4" />
@@ -176,33 +188,45 @@ export default function Contracts() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
-                            <span>
-                              {formatDate(contract.start_date)} ~ {formatDate(contract.end_date)}
-                            </span>
+                            <span>{periodText}</span>
                           </div>
                           <div className="font-semibold text-blue-600">
-                            {formatPrice(contract.price)}
+                            {priceText}
                           </div>
                         </div>
-                        {contract.memo && (
+                        {contract.special_terms && (
                           <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-700">{contract.memo}</p>
+                            <p className="text-sm text-gray-700">{contract.special_terms}</p>
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>작성일: {formatDate(contract.created_at)}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleContractClick(contract.id);
-                        }}
-                      >
-                        자세히 보기
-                      </Button>
+                      <span>작성일: {formatContractDate(contract.created_at)}</span>
+                      <span>문서번호: {contract.doc_no}</span>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleContractClick(contract.id);
+                          }}
+                        >
+                          자세히 보기
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteContract(contract.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          삭제
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

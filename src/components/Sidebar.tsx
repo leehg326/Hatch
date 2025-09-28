@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Calendar, FileText, Users, LayoutDashboard } from 'lucide-react'
+import { Calendar, FileText, Users, LayoutDashboard, Sparkles } from 'lucide-react'
 import { APP_NAME } from '@/lib/appConfig'
 import { authStore } from '@/stores/auth'
 import SidebarAccount from '@/components/SidebarAccount'
@@ -11,7 +11,8 @@ export default function Sidebar(){
   const displayUser = authUser || user
   const items = [
     { to: '/', label: '대시보드', icon: LayoutDashboard },
-    { to: '/contracts', label: '계약', icon: FileText },
+    { to: '/oneclick-contract', label: '원클릭 계약서', icon: Sparkles },
+    { to: '/contracts', label: '계약서 관리', icon: FileText },
     { to: '/clients', label: '고객', icon: Users },
     { to: '/schedule', label: '일정', icon: Calendar },
   ]

@@ -17,6 +17,41 @@ from mailer import mailer
 from pdf_generator import ContractPDFGenerator
 from flask import make_response
 from routes.auth import bp as auth_bp
+from routes.contracts import bp as contracts_bp
+from routes.contracts_api import bp as contracts_api_bp
+from routes.simple_contracts_api import simple_contracts_bp
+from flask import Blueprint, request, jsonify
+
+# 새로운 contracts 블루프린트 추가
+contracts_bp_new = Blueprint("contracts_bp", __name__, url_prefix="/api")
+
+@contracts_bp_new.route("/contracts", methods=["GET"], strict_slashes=False)
+def list_contracts():
+    try:
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 10))
+        q = request.args.get("q", "").strip()
+    except ValueError:
+        return jsonify({"error": "invalid query params"}), 400
+
+    # TODO: DB 연동으로 교체
+    items = []
+    total = 0
+
+    return jsonify({
+        "items": items,
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+    }), 200
+
+@contracts_bp_new.route("/contracts", methods=["POST"], strict_slashes=False)
+def create_contract():
+    return jsonify({"id": 1, "status": "DRAFT"}), 201
+
+@contracts_bp_new.route("/contracts/<int:contract_id>/pdf", methods=["GET"], strict_slashes=False)
+def get_contract_pdf(contract_id):
+    return jsonify({"ok": True, "pdf_url": f"/api/contracts/{contract_id}/pdf"}), 200
 
 def create_app():
     app = Flask(__name__)
@@ -71,6 +106,10 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     migrate = Migrate(app, db)
+    
+    # 데이터베이스 테이블 생성
+    with app.app_context():
+        db.create_all()
     
     # Initialize rate limiter
     limiter = Limiter(
@@ -543,132 +582,7 @@ def create_app():
             'email': user.email
         })
     
-    # Contract API Routes
-    @app.route('/api/contracts', methods=['POST'])
-    @require_auth
-    def create_contract(user):
-        try:
-            data = request.get_json()
-            if not data:
-                return jsonify({'error': 'No data provided'}), 400
-            
-            # 필수 필드 검증
-            required_fields = ['customer_name', 'customer_phone', 'property_address', 'price', 'start_date', 'end_date']
-            for field in required_fields:
-                if not data.get(field):
-                    return jsonify({'error': f'{field} is required'}), 400
-            
-            # 날짜 형식 검증
-            try:
-                start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-                end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
-            except ValueError:
-                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-            
-            # 계약서 생성
-            contract = Contract(
-                user_id=user.id,
-                customer_name=data['customer_name'].strip(),
-                customer_phone=data['customer_phone'].strip(),
-                property_address=data['property_address'].strip(),
-                price=int(data['price']),
-                start_date=start_date,
-                end_date=end_date,
-                memo=data.get('memo', '').strip(),
-                signature_data=data.get('signature_data', '')
-            )
-            
-            db.session.add(contract)
-            db.session.commit()
-            
-            return jsonify({
-                'message': 'Contract created successfully',
-                'contract': contract.to_dict()
-            }), 201
-            
-        except ValueError as e:
-            return jsonify({'error': 'Invalid data format'}), 400
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': 'Failed to create contract'}), 500
-    
-    @app.route('/api/contracts', methods=['GET'])
-    # @require_auth  # 임시로 비활성화
-    def get_contracts(user=None):
-        try:
-            # 검색 쿼리 파라미터
-            search_query = request.args.get('q', '').strip()
-            page = int(request.args.get('page', 1))
-            per_page = int(request.args.get('per_page', 20))
-            
-            # 기본 쿼리 (사용자의 계약서만)
-            if user:
-                query = Contract.query.filter_by(user_id=user.id)
-            else:
-                # 인증되지 않은 경우 모든 계약서 조회 (개발용)
-                query = Contract.query
-            
-            # 검색 필터 적용
-            if search_query:
-                search_filter = f"%{search_query}%"
-                query = query.filter(
-                    db.or_(
-                        Contract.customer_name.ilike(search_filter),
-                        Contract.customer_phone.ilike(search_filter),
-                        Contract.property_address.ilike(search_filter)
-                    )
-                )
-            
-            # 최신순 정렬 및 페이지네이션
-            contracts = query.order_by(Contract.created_at.desc()).paginate(
-                page=page, per_page=per_page, error_out=False
-            )
-            
-            return jsonify({
-                'contracts': [contract.to_dict() for contract in contracts.items],
-                'total': contracts.total,
-                'pages': contracts.pages,
-                'current_page': page,
-                'per_page': per_page
-            })
-            
-        except Exception as e:
-            return jsonify({'error': 'Failed to fetch contracts'}), 500
-    
-    @app.route('/api/contracts/<int:contract_id>', methods=['GET'])
-    @require_auth
-    def get_contract(user, contract_id):
-        try:
-            contract = Contract.query.filter_by(id=contract_id, user_id=user.id).first()
-            if not contract:
-                return jsonify({'error': 'Contract not found'}), 404
-            
-            return jsonify({'contract': contract.to_dict()})
-            
-        except Exception as e:
-            return jsonify({'error': 'Failed to fetch contract'}), 500
-    
-    @app.route('/api/contracts/<int:contract_id>/pdf', methods=['GET'])
-    @require_auth
-    def get_contract_pdf(user, contract_id):
-        try:
-            contract = Contract.query.filter_by(id=contract_id, user_id=user.id).first()
-            if not contract:
-                return jsonify({'error': 'Contract not found'}), 404
-            
-            # PDF 생성
-            pdf_generator = ContractPDFGenerator()
-            pdf_data = pdf_generator.generate_contract_pdf(contract)
-            
-            # PDF 응답 생성
-            response = make_response(pdf_data)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename="contract_{contract_id}.pdf"'
-            
-            return response
-            
-        except Exception as e:
-            return jsonify({'error': 'Failed to generate PDF'}), 500
+    # Contract API Routes are now handled by the contracts blueprint
     
     # Health check
     @app.route('/health')
@@ -689,32 +603,17 @@ def create_app():
     
     
     
-    # /contracts Shim 라우트 (404 방지)
-    @app.route('/contracts', methods=['GET'])
-    @limiter.limit("1000 per hour")  # 대시보드용으로 제한 완화
-    def contracts_shim():
-        """
-        대시보드가 기대하는 /contracts 엔드포인트에 대한 임시 호환 라우트.
-        - 실제 구현(/api/contracts, /contracts/list 등)이 따로 있으면,
-          그쪽을 호출하게 리팩터 가능. 우선은 최소 형태로 200 보장.
-        """
-        per_page = request.args.get("per_page", default=5, type=int)
-        page = request.args.get("page", default=1, type=int)
-
-        # TODO: 실제 구현이 있을 경우 여기서 위임/연결:
-        #   from .contracts_bp import list_contracts
-        #   return list_contracts()
-
-        # 임시 최소 응답(프런트가 크래시하지 않게 표준형 제공)
-        return jsonify({
-            "items": [],          # 실제 데이터 없으면 빈 배열
-            "total": 0,           # 전체 개수
-            "page": page,
-            "per_page": per_page
-        }), 200
+    # /contracts Shim 라우트는 제거됨 - Blueprint에서 처리
     
     # Register auth blueprint
     app.register_blueprint(auth_bp)
+    # app.register_blueprint(contracts_bp)  # 기존 contracts 라우트 비활성화
+    # app.register_blueprint(contracts_bp_new)  # 목업 라우트 비활성화
+    app.register_blueprint(contracts_api_bp)  # 원래 API 복구
+    # app.register_blueprint(simple_contracts_bp)  # 간단한 API 비활성화
+    
+    # strict_slashes 설정
+    app.url_map.strict_slashes = False
     
     # Error handlers
     @app.errorhandler(400)

@@ -95,7 +95,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <div className="text-sm text-gray-500">문서</div>
-                <div className="font-semibold text-gray-900">새 계약서</div>
+                <div className="font-semibold text-gray-900">계약서</div>
               </div>
             </CardContent>
           </Card>

@@ -2,7 +2,7 @@
  * Authentication context provider
  */
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api } from '../lib/api';
+import { api, setAccessToken } from '../lib/api';
 
 // Types
 interface User {
@@ -72,9 +72,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const userData = await response.json();
           console.log('Session valid, user data:', userData);
           setUser(userData);
+          // 세션이 유효한 경우 토큰도 설정 (쿠키 기반 인증이므로 임시 토큰 사용)
+          if (userData.id) {
+            setAccessToken('session-valid');
+          }
         } else {
           console.log('Session invalid or expired');
           setUser(null);
+          setAccessToken(null);
         }
       } catch (error) {
         // Session invalid or not logged in
@@ -133,6 +138,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const loginData = await response.json();
       if (loginData.user) {
         setUser(loginData.user);
+        // 토큰이 있다면 설정
+        if (loginData.access_token) {
+          setAccessToken(loginData.access_token);
+        }
         return { success: true, user: loginData.user };
       } else {
         // 백엔드에서 사용자 정보를 반환하지 않는 경우 임시 사용자 정보 사용
@@ -142,6 +151,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           email: email
         };
         setUser(tempUser);
+        // 토큰이 있다면 설정
+        if (loginData.access_token) {
+          setAccessToken(loginData.access_token);
+        }
         return { success: true, user: tempUser };
       }
     } catch (error) {
@@ -158,6 +171,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
       // Clear local state
       setUser(null);
+      setAccessToken(null);
       // Clear rememberMe setting
       localStorage.removeItem('rememberMe');
       // Redirect to main dashboard
@@ -165,6 +179,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       // Even if server logout fails, clear local state
       setUser(null);
+      setAccessToken(null);
       // Clear rememberMe setting
       localStorage.removeItem('rememberMe');
       // Still redirect to main dashboard

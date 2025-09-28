@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>부동산 매매계약서</title>
+    <link rel="stylesheet" href="/static/css/print.css">
+</head>
+<body>
+    <div class="contract-container">
+        <!-- 계약서 헤더 -->
+        <div class="contract-header">
+            <h1 class="contract-title">부동산 매매계약서</h1>
+            <div class="contract-info">
+                <div class="doc-info">
+                    <span class="doc-no">문서번호: {{ contract.doc_no }}</span>
+                    <span class="doc-date">계약일: {{ contract.contract_date or contract.created_at.strftime('%Y년 %m월 %d일') }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. 당사자 인적사항 -->
+        <section class="section">
+            <h2 class="section-title">1. 당사자 인적사항</h2>
+            <table class="info-table">
+                <tr>
+                    <th class="col-label">구분</th>
+                    <th class="col-label">성명</th>
+                    <th class="col-label">연락처</th>
+                    <th class="col-label">주소</th>
+                </tr>
+                <tr>
+                    <td class="col-label">매도인</td>
+                    <td class="col-content">{{ contract.seller_name }}</td>
+                    <td class="col-content">{{ contract.seller_phone }}</td>
+                    <td class="col-content">{{ contract.property_address }}</td>
+                </tr>
+                <tr>
+                    <td class="col-label">매수인</td>
+                    <td class="col-content">{{ contract.buyer_name }}</td>
+                    <td class="col-content">{{ contract.buyer_phone }}</td>
+                    <td class="col-content">{{ contract.property_address }}</td>
+                </tr>
+            </table>
+        </section>
+
+        <!-- 2. 부동산의 표시 -->
+        <section class="section">
+            <h2 class="section-title">2. 부동산의 표시</h2>
+            <table class="info-table">
+                <tr>
+                    <th class="col-label">소재지</th>
+                    <td class="col-content" colspan="3">{{ contract.property_address }}</td>
+                </tr>
+                <tr>
+                    <th class="col-label">구조/면적</th>
+                    <td class="col-content">
+                        {% if contract.unit %}
+                            {{ contract.unit.get('structure', '') }} / {{ contract.unit.get('area', '') }}㎡
+                        {% endif %}
+                    </td>
+                    <th class="col-label">용도</th>
+                    <td class="col-content">주거용</td>
+                </tr>
+                <tr>
+                    <th class="col-label">등기부등본</th>
+                    <td class="col-content">
+                        {% if contract.attachments and contract.attachments.get('registry') %}
+                            첨부함
+                        {% else %}
+                            미첨부
+                        {% endif %}
+                    </td>
+                    <th class="col-label">건축물대장</th>
+                    <td class="col-content">
+                        {% if contract.attachments and contract.attachments.get('building') %}
+                            첨부함
+                        {% else %}
+                            미첨부
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </section>
+
+        <!-- 3. 계약금액 및 지급기일 -->
+        <section class="section">
+            <h2 class="section-title">3. 계약금액 및 지급기일</h2>
+            <table class="info-table">
+                <tr>
+                    <th class="col-label">매매가격</th>
+                    <td class="col-content price">{{ "{:,}".format(contract.sale_price or contract.price_total or 0) }}원</td>
+                    <th class="col-label">계약금</th>
+                    <td class="col-content">{{ "{:,}".format((contract.sale_price or contract.price_total or 0) * 0.1) }}원</td>
+                </tr>
+                <tr>
+                    <th class="col-label">중도금</th>
+                    <td class="col-content">{{ "{:,}".format((contract.sale_price or contract.price_total or 0) * 0.3) }}원</td>
+                    <th class="col-label">잔금</th>
+                    <td class="col-content">{{ "{:,}".format((contract.sale_price or contract.price_total or 0) * 0.6) }}원</td>
+                </tr>
+                <tr>
+                    <th class="col-label">계약금 지급일</th>
+                    <td class="col-content">{{ contract.contract_date or '계약일' }}</td>
+                    <th class="col-label">잔금 지급일</th>
+                    <td class="col-content">{{ contract.handover_date or '인도일' }}</td>
+                </tr>
+            </table>
+        </section>
+
+        <!-- 4. 특약사항 -->
+        <section class="section">
+            <h2 class="section-title">4. 특약사항</h2>
+            <div class="special-terms">
+                {% if contract.special_terms %}
+                    {{ contract.special_terms }}
+                {% else %}
+                    <p>1. 매도인은 매수인에게 부동산의 소유권을 이전하고 인도할 의무가 있습니다.</p>
+                    <p>2. 매수인은 계약금액을 약정된 기일에 지급할 의무가 있습니다.</p>
+                    <p>3. 계약 당사자 쌍방은 계약 내용을 성실히 이행할 것을 약속합니다.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- 5. 중개보수 -->
+        <section class="section">
+            <h2 class="section-title">5. 중개보수</h2>
+            <table class="info-table">
+                <tr>
+                    <th class="col-label">중개사무소명</th>
+                    <td class="col-content">{{ contract.brokerage.get('office_name', '') if contract.brokerage else '' }}</td>
+                    <th class="col-label">대표자</th>
+                    <td class="col-content">{{ contract.brokerage.get('rep', '') if contract.brokerage else '' }}</td>
+                </tr>
+                <tr>
+                    <th class="col-label">등록번호</th>
+                    <td class="col-content">{{ contract.brokerage.get('reg_no', '') if contract.brokerage else '' }}</td>
+                    <th class="col-label">소재지</th>
+                    <td class="col-content">{{ contract.brokerage.get('address', '') if contract.brokerage else '' }}</td>
+                </tr>
+                <tr>
+                    <th class="col-label">연락처</th>
+                    <td class="col-content">{{ contract.brokerage.get('phone', '') if contract.brokerage else '' }}</td>
+                    <th class="col-label">중개보수</th>
+                    <td class="col-content">{{ contract.brokerage.get('fee', '') if contract.brokerage else '' }}</td>
+                </tr>
+            </table>
+        </section>
+
+        <!-- 6. 확인 및 설명 -->
+        <section class="section">
+            <h2 class="section-title">6. 확인 및 설명</h2>
+            <div class="confirmation">
+                <p>1. 위 부동산에 대한 권리관계, 제한사항, 기타 계약조건에 대하여 충분히 설명을 들었습니다.</p>
+                <p>2. 계약서의 모든 내용을 이해하고 계약을 체결합니다.</p>
+                <p>3. 계약서 2부를 작성하여 당사자 각 1부씩 보관합니다.</p>
+            </div>
+        </section>
+
+        <!-- 7. 서명 및 날인 -->
+        <section class="section signature-section">
+            <h2 class="section-title">7. 서명 및 날인</h2>
+            <div class="signature-container">
+                <div class="signature-box">
+                    <div class="signature-label">매도인</div>
+                    <div class="signature-field">
+                        {% if contract.signatures %}
+                            {% for sig in contract.signatures %}
+                                {% if sig.role == 'SELLER' and sig.image_path %}
+                                    <img src="file://{{ sig.image_path }}" alt="매도인 서명" class="signature-image">
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <div class="signature-name">{{ contract.seller_name }}</div>
+                </div>
+                
+                <div class="signature-box">
+                    <div class="signature-label">매수인</div>
+                    <div class="signature-field">
+                        {% if contract.signatures %}
+                            {% for sig in contract.signatures %}
+                                {% if sig.role == 'BUYER' and sig.image_path %}
+                                    <img src="file://{{ sig.image_path }}" alt="매수인 서명" class="signature-image">
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <div class="signature-name">{{ contract.buyer_name }}</div>
+                </div>
+                
+                <div class="signature-box">
+                    <div class="signature-label">중개인</div>
+                    <div class="signature-field">
+                        {% if contract.signatures %}
+                            {% for sig in contract.signatures %}
+                                {% if sig.role == 'AGENT' and sig.image_path %}
+                                    <img src="file://{{ sig.image_path }}" alt="중개인 서명" class="signature-image">
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <div class="signature-name">{{ contract.brokerage.get('rep', '') if contract.brokerage else '' }}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 계약서 푸터 -->
+        <div class="contract-footer">
+            <div class="footer-info">
+                <div class="qr-section">
+                    <div class="qr-code">
+                        {% if qr_code_data %}
+                            <img src="data:image/png;base64,{{ qr_code_data }}" alt="QR Code" style="width: 100%; height: 100%; object-fit: contain;">
+                        {% else %}
+                            QR 코드
+                        {% endif %}
+                    </div>
+                    <div class="qr-info">
+                        <div class="hash-info">SHA-256: {{ contract.doc_hash[:16] if contract.doc_hash else 'N/A' }}...</div>
+                        <div class="generation-date">생성일: {{ contract.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                        <div class="contract-id">계약ID: {{ contract.id }}</div>
+                    </div>
+                </div>
+                <div class="watermark">
+                    <p>{{ watermark_data.text if watermark_data else 'Hatch 자동생성 계약서 – 국토부 표준양식 기반' }}</p>
+                    <p>문서버전: {{ contract.form_version }}</p>
+                    <p>보안등급: HIGH</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

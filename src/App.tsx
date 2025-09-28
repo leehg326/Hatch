@@ -15,6 +15,9 @@ import Signup from '@/pages/Signup'
 
 const Dashboard = lazy(() => import('@/views/Dashboard'))
 const Contracts = lazy(() => import('@/views/Contracts'))
+const ContractForm = lazy(() => import('@/views/ContractForm'))
+const OneClickContractForm = lazy(() => import('@/views/OneClickContractForm'))
+const ContractPreview = lazy(() => import('@/views/ContractPreview'))
 const Clients = lazy(() => import('@/views/Clients'))
 const Schedule = lazy(() => import('@/views/Schedule'))
 
@@ -67,9 +70,12 @@ export default function App() {
 
         {/* Protected routes */}
         <Route element={<ProtectedLayout />}>
-          <Route path="contracts" element={<Suspense fallback={null}><Contracts /></Suspense>} />
-          <Route path="clients" element={<Suspense fallback={null}><Clients /></Suspense>} />
-          <Route path="schedule" element={<Suspense fallback={null}><Schedule /></Suspense>} />
+          <Route path="/contracts" element={<Suspense fallback={null}><Contracts /></Suspense>} />
+          <Route path="/contracts/new" element={<Suspense fallback={null}><ContractForm /></Suspense>} />
+          <Route path="/oneclick-contract" element={<Suspense fallback={null}><OneClickContractForm /></Suspense>} />
+          <Route path="/contracts/:id" element={<Suspense fallback={null}><ContractPreview /></Suspense>} />
+          <Route path="/clients" element={<Suspense fallback={null}><Clients /></Suspense>} />
+          <Route path="/schedule" element={<Suspense fallback={null}><Schedule /></Suspense>} />
         </Route>
 
         {/* Email/Password Authentication Routes */}

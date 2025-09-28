@@ -1,0 +1,343 @@
+/* A4 규격 인쇄용 스타일 */
+@page {
+    size: A4;
+    margin: 12mm;
+}
+
+/* 폰트 임베딩 */
+@font-face {
+    font-family: 'Noto Sans KR';
+    src: url('/static/fonts/NotoSansKR-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Noto Sans KR';
+    src: url('/static/fonts/NotoSansKR-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* 기본 스타일 */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11pt;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+}
+
+.contract-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* 계약서 헤더 */
+.contract-header {
+    text-align: center;
+    margin-bottom: 20pt;
+    border-bottom: 2pt solid #000;
+    padding-bottom: 10pt;
+}
+
+.contract-title {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 10pt;
+    color: #000;
+}
+
+.contract-info {
+    font-size: 10pt;
+}
+
+.doc-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5pt;
+}
+
+.doc-no, .doc-date {
+    font-weight: bold;
+}
+
+/* 섹션 스타일 */
+.section {
+    margin-bottom: 15pt;
+    page-break-inside: avoid;
+}
+
+.section-title {
+    font-size: 12pt;
+    font-weight: bold;
+    margin-bottom: 8pt;
+    padding: 4pt 8pt;
+    background-color: #f5f5f5;
+    border-left: 4pt solid #000;
+}
+
+/* 테이블 스타일 */
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10pt;
+    page-break-inside: avoid;
+}
+
+.info-table th,
+.info-table td {
+    border: 1pt solid #000;
+    padding: 6pt 8pt;
+    vertical-align: top;
+    font-size: 10pt;
+}
+
+.info-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.col-label {
+    width: 20%;
+    font-weight: bold;
+    background-color: #f8f8f8;
+}
+
+.col-content {
+    width: 30%;
+}
+
+.price {
+    font-weight: bold;
+    text-align: right;
+}
+
+/* 특약사항 */
+.special-terms {
+    padding: 8pt;
+    border: 1pt solid #ccc;
+    background-color: #fafafa;
+    font-size: 10pt;
+    line-height: 1.5;
+}
+
+.special-terms p {
+    margin-bottom: 5pt;
+}
+
+/* 확인 및 설명 */
+.confirmation {
+    padding: 8pt;
+    border: 1pt solid #ccc;
+    background-color: #f9f9f9;
+    font-size: 10pt;
+    line-height: 1.5;
+}
+
+.confirmation p {
+    margin-bottom: 5pt;
+}
+
+/* 서명 섹션 */
+.signature-section {
+    margin-top: 20pt;
+    page-break-inside: avoid;
+}
+
+.signature-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15pt;
+}
+
+.signature-box {
+    width: 30%;
+    text-align: center;
+    border: 1pt solid #000;
+    padding: 10pt;
+    page-break-inside: avoid;
+}
+
+.signature-label {
+    font-weight: bold;
+    font-size: 11pt;
+    margin-bottom: 8pt;
+    border-bottom: 1pt solid #ccc;
+    padding-bottom: 4pt;
+}
+
+.signature-field {
+    height: 40pt;
+    border: 1pt dashed #999;
+    margin-bottom: 8pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fafafa;
+}
+
+.signature-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.signature-name {
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+/* 계약서 푸터 */
+.contract-footer {
+    margin-top: 30pt;
+    border-top: 1pt solid #ccc;
+    padding-top: 10pt;
+    page-break-inside: avoid;
+}
+
+.footer-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-size: 9pt;
+}
+
+.qr-section {
+    display: flex;
+    align-items: center;
+    gap: 10pt;
+}
+
+.qr-code {
+    width: 40pt;
+    height: 40pt;
+    border: 1pt solid #ccc;
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8pt;
+    text-align: center;
+}
+
+.qr-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2pt;
+}
+
+.hash-info {
+    font-family: monospace;
+    font-size: 8pt;
+    color: #666;
+}
+
+.generation-date,
+.contract-id {
+    font-size: 8pt;
+    color: #666;
+}
+
+.watermark {
+    text-align: right;
+    color: #999;
+    font-size: 8pt;
+}
+
+.watermark p {
+    margin-bottom: 2pt;
+}
+
+/* 페이지 브레이크 제어 */
+.page-break {
+    page-break-before: always;
+}
+
+.no-break {
+    page-break-inside: avoid;
+}
+
+/* 인쇄 시 숨김 요소 */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* 반응형 조정 */
+@media screen and (max-width: 768px) {
+    .signature-container {
+        flex-direction: column;
+        gap: 10pt;
+    }
+    
+    .signature-box {
+        width: 100%;
+    }
+    
+    .footer-info {
+        flex-direction: column;
+        gap: 10pt;
+    }
+}
+
+/* 추가 스타일링 */
+.contract-container h1,
+.contract-container h2,
+.contract-container h3 {
+    color: #000;
+}
+
+.contract-container table {
+    border-spacing: 0;
+}
+
+.contract-container th {
+    background-color: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* 서명 필드 강조 */
+.signature-field:empty::after {
+    content: "서명란";
+    color: #999;
+    font-style: italic;
+}
+
+/* 금액 표시 강조 */
+.price {
+    font-weight: bold;
+    color: #000;
+}
+
+/* 섹션 구분선 */
+.section:not(:last-child) {
+    border-bottom: 1pt solid #eee;
+    padding-bottom: 10pt;
+}
+
+/* 테이블 행 강조 */
+.info-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.info-table tr:nth-child(even) {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+

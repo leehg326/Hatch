@@ -15,13 +15,19 @@
 - 계약 상태 표시 (계약 예정, 진행 중, 종료)
 - 페이지네이션 지원
 
-### 3. 계약서 미리보기 및 PDF
-- 계약서 상세 정보 표시
-- A4 형식 PDF 자동 생성 (ReportLab)
-- 서명이 포함된 전문적인 계약서 레이아웃
-- PDF 다운로드 및 인쇄 기능
+### 3. 표준계약서 PDF 생성
+- 한국공인중개사협회 표준계약서 형식 준용
+- 매매/전세/월세/반전세 계약서 자동 생성
+- 법적/실무 필수 항목 모두 포함
+- QR 코드 및 문서 해시를 통한 증빙력 확보
+- 전자서명 지원 (목업)
 
-### 4. 대시보드
+### 4. 계약서 미리보기 및 다운로드
+- 계약서 상세 정보 표시
+- PDF 미리보기/다운로드/인쇄 기능
+- 계약서 상태 관리 (초안/서명완료/보관)
+
+### 5. 대시보드
 - 계약서 통계 (총 계약서 수, 진행 중인 계약)
 - 최근 활동 내역
 - 월별 계약 건수 차트
@@ -218,6 +224,36 @@ JWT_SECRET=change_this_long_random_string_for_production
 ACCESS_TOKEN_EXPIRES_MIN=15
 REFRESH_TOKEN_EXPIRES_DAYS=14
 ```
+
+## 📄 표준계약서 PDF 생성 기능
+
+### 폰트 설치
+한글 PDF 생성을 위해 Noto Sans CJK 폰트를 설치하세요:
+```bash
+# 폰트 파일 경로: static/fonts/NotoSansCJK-Regular.ttf
+# 폰트가 없는 경우 기본 Helvetica 폰트 사용
+```
+
+### 로컬 실행
+```bash
+# 백엔드 실행
+python app.py
+
+# 프론트엔드 실행
+npm run dev
+```
+
+### 필수 환경 변수
+```bash
+# .env 파일에 추가
+PDF_FONT_PATH=static/fonts/NotoSansCJK-Regular.ttf
+```
+
+### 전자서명 목업 사용법
+1. 계약서 생성 후 `/api/contracts/{id}/sign-requests` POST 요청
+2. 역할별 서명 요청 생성 (SELLER/BUYER/AGENT)
+3. `/api/contracts/{id}/sign-callback` POST 요청으로 서명 완료 처리
+4. 계약서 상태가 SIGNED로 변경됨
 
 ## 📄 라이선스
 
