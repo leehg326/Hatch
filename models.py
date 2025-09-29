@@ -4,6 +4,8 @@ from enum import Enum
 
 db = SQLAlchemy()
 
+# Signature models will be imported after they are defined
+
 class ProviderType(Enum):
     KAKAO = 'kakao'
     GOOGLE = 'google'
@@ -104,6 +106,7 @@ class Contract(db.Model):
     
     # Relationships
     user = db.relationship('User', backref=db.backref('contracts', lazy=True))
+    sign_requests = db.relationship('SignRequest', backref='contract', lazy=True, cascade='all, delete-orphan')
     
     # 당사자 정보
     seller_name = db.Column(db.String(100), nullable=False)
@@ -346,3 +349,149 @@ class ContractEvent(db.Model):
             'event_hash': self.event_hash,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+# Electronic Signature Models
+class SignStatus(Enum):
+    """서명 상태"""
+    PENDING = "PENDING"      # 대기 중
+    VIEWED = "VIEWED"        # 열람됨
+    SIGNED = "SIGNED"        # 서명 완료
+    EXPIRED = "EXPIRED"      # 만료됨
+    CANCELED = "CANCELED"    # 취소됨
+
+
+class SignRole(Enum):
+    """서명자 역할"""
+    SELLER = "SELLER"        # 매도인
+    BUYER = "BUYER"          # 매수인
+    LESSOR = "LESSOR"        # 임대인
+    LESSEE = "LESSEE"        # 임차인
+    BROKER = "BROKER"        # 중개인
+    AGENT = "AGENT"          # 중개업자
+    GUARANTOR = "GUARANTOR"  # 보증인
+
+
+class SignRequest(db.Model):
+    """서명 요청 모델"""
+    __tablename__ = 'sign_requests'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=False)
+    role = db.Column(db.Enum(SignRole), nullable=False)
+    
+    # 서명자 정보
+    signer_name = db.Column(db.String(100), nullable=False)
+    signer_email = db.Column(db.String(255), nullable=False)
+    signer_phone = db.Column(db.String(20), nullable=True)
+    
+    # 토큰 및 만료
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.Enum(SignStatus), default=SignStatus.PENDING, nullable=False)
+    
+    # 서명 정보
+    signed_at = db.Column(db.DateTime, nullable=True)
+    signature_image_path = db.Column(db.String(500), nullable=True)  # PNG 파일 경로
+    
+    # 메타데이터
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # 관계는 Contract 모델에서 정의됨
+    
+    @staticmethod
+    def new_token():
+        """새로운 서명 토큰 생성"""
+        import secrets
+        import string
+        # 32자리 고엔트로피 토큰 생성
+        alphabet = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(alphabet) for _ in range(32))
+    
+    @classmethod
+    def create(cls, contract_id, role, signer_name, signer_email, signer_phone=None, ttl_days=7):
+        """서명 요청 생성"""
+        from datetime import timedelta
+        token = cls.new_token()
+        expires_at = datetime.utcnow() + timedelta(days=ttl_days)
+        
+        return cls(
+            contract_id=contract_id,
+            role=role,
+            signer_name=signer_name,
+            signer_email=signer_email,
+            signer_phone=signer_phone,
+            token=token,
+            expires_at=expires_at,
+            status=SignStatus.PENDING
+        )
+    
+    def is_expired(self):
+        """만료 여부 확인"""
+        return datetime.utcnow() > self.expires_at
+    
+    def is_valid(self):
+        """유효한 토큰인지 확인"""
+        return not self.is_expired() and self.status in [SignStatus.PENDING, SignStatus.VIEWED]
+    
+    def mark_viewed(self):
+        """열람 상태로 변경"""
+        if self.status == SignStatus.PENDING:
+            self.status = SignStatus.VIEWED
+            self.updated_at = datetime.utcnow()
+            return True
+        return False
+    
+    def mark_signed(self, signature_image_path):
+        """서명 완료로 변경"""
+        if self.is_valid():
+            self.status = SignStatus.SIGNED
+            self.signed_at = datetime.utcnow()
+            self.signature_image_path = signature_image_path
+            self.updated_at = datetime.utcnow()
+            return True
+        return False
+    
+    def mark_expired(self):
+        """만료 상태로 변경"""
+        if self.status in [SignStatus.PENDING, SignStatus.VIEWED]:
+            self.status = SignStatus.EXPIRED
+            self.updated_at = datetime.utcnow()
+            return True
+        return False
+    
+    def mark_canceled(self):
+        """취소 상태로 변경"""
+        if self.status in [SignStatus.PENDING, SignStatus.VIEWED]:
+            self.status = SignStatus.CANCELED
+            self.updated_at = datetime.utcnow()
+            return True
+        return False
+    
+    def get_sign_url(self, base_url):
+        """서명 URL 생성"""
+        return f"{base_url}/sign/{self.token}"
+    
+    def to_dict(self):
+        """딕셔너리로 변환"""
+        return {
+            'id': self.id,
+            'contract_id': self.contract_id,
+            'role': self.role.value,
+            'signer_name': self.signer_name,
+            'signer_email': self.signer_email,
+            'signer_phone': self.signer_phone,
+            'token': self.token,
+            'expires_at': self.expires_at.isoformat(),
+            'status': self.status.value,
+            'signed_at': self.signed_at.isoformat() if self.signed_at else None,
+            'signature_image_path': self.signature_image_path,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'is_expired': self.is_expired(),
+            'is_valid': self.is_valid()
+        }
+    
+    def __repr__(self):
+        return f"<SignRequest(id={self.id}, contract_id={self.contract_id}, role={self.role.value}, status={self.status.value})>"

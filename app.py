@@ -20,6 +20,8 @@ from routes.auth import bp as auth_bp
 from routes.contracts import bp as contracts_bp
 from routes.contracts_api import bp as contracts_api_bp
 from routes.simple_contracts_api import simple_contracts_bp
+from routes.sign_api import sign_api_bp
+from routes.sign_pages import sign_pages_bp
 from flask import Blueprint, request, jsonify
 
 # 새로운 contracts 블루프린트 추가
@@ -589,6 +591,17 @@ def create_app():
     def health_check():
         return jsonify({'status': 'healthy'}), 200
     
+    # Font serving with proper MIME type
+    @app.route('/static/fonts/<path:filename>')
+    def serve_fonts(filename):
+        from flask import send_from_directory
+        resp = send_from_directory('static/fonts', filename)
+        # Some Windows setups miss proper MIME for .ttf
+        if filename.lower().endswith('.ttf'):
+            resp.headers['Content-Type'] = 'font/ttf'
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+    
     # 라우트 목록 디버그 (개발 전용)
     @app.route('/__routes')
     def list_routes():
@@ -611,6 +624,10 @@ def create_app():
     # app.register_blueprint(contracts_bp_new)  # 목업 라우트 비활성화
     app.register_blueprint(contracts_api_bp)  # 원래 API 복구
     # app.register_blueprint(simple_contracts_bp)  # 간단한 API 비활성화
+    
+    # Register signature blueprints
+    app.register_blueprint(sign_api_bp)
+    app.register_blueprint(sign_pages_bp)
     
     # strict_slashes 설정
     app.url_map.strict_slashes = False

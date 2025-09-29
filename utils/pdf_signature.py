@@ -199,3 +199,4 @@ def verify_contract_signatures(contract):
     """계약서 서명 검증 (외부 호출용)"""
     return signature_integrator.verify_signature_integrity(contract)
 
+

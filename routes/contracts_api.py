@@ -477,10 +477,9 @@ def get_contract_pdf(contract_id):
                 from flask import abort
                 abort(404)
         
-        # PDF 생성 - 한글 폰트 문제 해결된 PDF 생성기 사용
-        from simple_pdf_generator_v3 import SimpleContractPDFV3
-        pdf_generator = SimpleContractPDFV3()
-        pdf_content = pdf_generator.generate_contract_pdf(contract)
+        # PDF 생성 - WeasyPrint 기반 PDF 렌더러 사용
+        from pdf.pdf_renderer import render_contract_pdf
+        pdf_content = render_contract_pdf(contract)
         
         # 이벤트 생성
         create_contract_event(contract.id, 'PDF_GENERATED', {

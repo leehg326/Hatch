@@ -298,3 +298,4 @@ class SimpleContractPDFV3:
         buffer.seek(0)
         return buffer.getvalue()
 
+

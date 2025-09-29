@@ -15,7 +15,11 @@ import {
   User, 
   Phone,
   Banknote,
-  PenTool
+  PenTool,
+  Send,
+  CheckCircle,
+  Clock,
+  XCircle
 } from 'lucide-react';
 import type { 
   Contract
@@ -35,10 +39,13 @@ export default function ContractPreview() {
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [signRequests, setSignRequests] = useState<any[]>([]);
+  const [signLoading, setSignLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchContract(parseInt(id));
+      fetchSignRequests(parseInt(id));
     }
   }, [id]);
 
@@ -140,6 +147,97 @@ export default function ContractPreview() {
   const handlePdfView = () => {
     if (contract) {
       window.open(`/api/contracts/${contract.id}/pdf/preview?include=signatures,stamps`, '_blank');
+    }
+  };
+
+  const fetchSignRequests = async (contractId: number) => {
+    try {
+      const response = await api.get(`/sign/contracts/${contractId}/requests`);
+      if (response.data) {
+        setSignRequests(response.data.sign_requests);
+      }
+    } catch (error: any) {
+      console.error('서명 요청 조회 실패:', error);
+    }
+  };
+
+  const handleSendSignRequests = async () => {
+    if (!contract) return;
+
+    try {
+      setSignLoading(true);
+      
+      // 계약 유형에 따른 서명자 역할 설정
+      const signers = [];
+      
+      if (contract.type === 'SALE') {
+        signers.push(
+          { role: 'SELLER', name: contract.seller_name, email: contract.seller_email || '', phone: contract.seller_phone },
+          { role: 'BUYER', name: contract.buyer_name, email: contract.buyer_email || '', phone: contract.buyer_phone },
+          { role: 'AGENT', name: contract.brokerage?.rep || '중개인', email: contract.brokerage?.email || '', phone: contract.brokerage?.phone || '' }
+        );
+      } else if (contract.type === 'JEONSE' || contract.type === 'WOLSE') {
+        signers.push(
+          { role: 'LESSOR', name: contract.seller_name, email: contract.seller_email || '', phone: contract.seller_phone },
+          { role: 'LESSEE', name: contract.buyer_name, email: contract.buyer_email || '', phone: contract.buyer_phone },
+          { role: 'BROKER', name: contract.brokerage?.rep || '중개인', email: contract.brokerage?.email || '', phone: contract.brokerage?.phone || '' }
+        );
+      }
+
+      const response = await api.post('/sign/requests', {
+        contract_id: contract.id,
+        signers: signers
+      });
+
+      if (response.data) {
+        toast({
+          title: '서명 요청이 발송되었습니다',
+          description: `${response.data.sign_requests.length}명에게 서명 요청이 발송되었습니다.`,
+        });
+        
+        // 서명 요청 목록 새로고침
+        fetchSignRequests(contract.id);
+      }
+    } catch (error: any) {
+      toast({
+        title: '서명 요청 발송에 실패했습니다',
+        description: error.response?.data?.error || '잠시 후 다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSignLoading(false);
+    }
+  };
+
+  const getSignStatusIcon = (status: string) => {
+    switch (status) {
+      case 'SIGNED':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'PENDING':
+      case 'VIEWED':
+        return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'EXPIRED':
+      case 'CANCELED':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const getSignStatusLabel = (status: string) => {
+    switch (status) {
+      case 'SIGNED':
+        return '서명 완료';
+      case 'PENDING':
+        return '대기 중';
+      case 'VIEWED':
+        return '열람됨';
+      case 'EXPIRED':
+        return '만료됨';
+      case 'CANCELED':
+        return '취소됨';
+      default:
+        return '알 수 없음';
     }
   };
 
@@ -344,6 +442,55 @@ export default function ContractPreview() {
                     {formatContractPeriod(contract)}
                   </p>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 전자서명 요청 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Send className="w-5 h-5" />
+                전자서명 요청
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-gray-600">서명자들에게 전자서명 요청을 보내세요</p>
+                  <Button 
+                    onClick={handleSendSignRequests}
+                    disabled={signLoading}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {signLoading ? '발송 중...' : '서명 요청 보내기'}
+                  </Button>
+                </div>
+                
+                {signRequests.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-900">서명 현황</h4>
+                    {signRequests.map((request) => (
+                      <div key={request.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {getSignStatusIcon(request.status)}
+                          <div>
+                            <p className="font-medium">{request.signer_name}</p>
+                            <p className="text-sm text-gray-600">{getSignatureRoleLabel(request.role)}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{getSignStatusLabel(request.status)}</p>
+                          {request.signed_at && (
+                            <p className="text-xs text-gray-500">
+                              {new Date(request.signed_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -92,3 +92,4 @@ if __name__ == "__main__":
         f.write(pdf_content)
     print("PDF 파일 저장: test_simple.pdf")
 
+

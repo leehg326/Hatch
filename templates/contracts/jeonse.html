@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>부동산 전세계약서</title>
-    <link rel="stylesheet" href="/static/css/print.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}?v=2025092901">
 </head>
 <body>
+    <div style="padding:8px; background:#eef; border:1px solid #ccd; margin-bottom:8px;">
+        폰트 테스트: 가나다라마바사 아자차카타파하 12345 ABCDE — Noto Sans KR 적용됨?
+    </div>
     <div class="contract-container">
         <!-- 계약서 헤더 -->
         <div class="contract-header">

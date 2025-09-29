@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전자서명 - {{ sign_request.signer_name }}님</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+        
+        .contract-info {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .contract-info h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .info-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            color: #333;
+        }
+        
+        .signature-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .signature-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .signature-canvas-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .signature-canvas {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            cursor: crosshair;
+            background: #fafafa;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .signature-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .signature-preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .signature-preview img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .footer {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .signature-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>전자서명</h1>
+            <p>{{ sign_request.signer_name }}님, 계약서 전자서명을 진행해주세요</p>
+        </div>
+        
+        <div class="contract-info">
+            <h2>계약서 정보</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">계약서 ID</div>
+                    <div class="info-value">{{ contract.id }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">계약 유형</div>
+                    <div class="info-value">{{ contract.type.value }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">서명자 역할</div>
+                    <div class="info-value">{{ sign_request.role.value }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">만료일</div>
+                    <div class="info-value">{{ sign_request.expires_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="signature-section">
+            <h2>서명하기</h2>
+            <p style="margin-bottom: 20px; color: #666;">
+                아래 캔버스에 마우스나 터치로 서명을 작성해주세요.
+            </p>
+            
+            <div class="signature-canvas-container">
+                <canvas id="signatureCanvas" class="signature-canvas" width="600" height="200"></canvas>
+            </div>
+            
+            <div class="signature-controls">
+                <button id="clearBtn" class="btn btn-secondary">지우기</button>
+                <button id="undoBtn" class="btn btn-secondary">되돌리기</button>
+                <button id="previewBtn" class="btn btn-primary">미리보기</button>
+                <button id="submitBtn" class="btn btn-success">서명 완료</button>
+            </div>
+            
+            <div id="signaturePreview" class="signature-preview" style="display: none;">
+                <h3>서명 미리보기</h3>
+                <img id="previewImage" src="" alt="서명 미리보기">
+            </div>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>서명을 처리하고 있습니다...</p>
+        </div>
+        
+        <div id="alertContainer"></div>
+        
+        <div class="footer">
+            <p>이 서명은 법적 효력을 가집니다. 신중하게 서명해주세요.</p>
+            <p>문의사항이 있으시면 관리자에게 연락해주세요.</p>
+        </div>
+    </div>
+
+    <script>
+        class SignatureCanvas {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.isDrawing = false;
+                this.lastX = 0;
+                this.lastY = 0;
+                this.history = [];
+                this.historyIndex = -1;
+                
+                this.setupCanvas();
+                this.bindEvents();
+            }
+            
+            setupCanvas() {
+                // 캔버스 크기 조정
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width * window.devicePixelRatio;
+                this.canvas.height = rect.height * window.devicePixelRatio;
+                this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                
+                // 스타일 설정
+                this.ctx.strokeStyle = '#2c3e50';
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                
+                // 초기 상태 저장
+                this.saveState();
+            }
+            
+            bindEvents() {
+                // 마우스 이벤트
+                this.canvas.addEventListener('mousedown', this.startDrawing.bind(this));
+                this.canvas.addEventListener('mousemove', this.draw.bind(this));
+                this.canvas.addEventListener('mouseup', this.stopDrawing.bind(this));
+                this.canvas.addEventListener('mouseout', this.stopDrawing.bind(this));
+                
+                // 터치 이벤트
+                this.canvas.addEventListener('touchstart', this.handleTouch.bind(this));
+                this.canvas.addEventListener('touchmove', this.handleTouch.bind(this));
+                this.canvas.addEventListener('touchend', this.stopDrawing.bind(this));
+            }
+            
+            handleTouch(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                                e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+            
+            startDrawing(e) {
+                this.isDrawing = true;
+                const rect = this.canvas.getBoundingClientRect();
+                this.lastX = e.clientX - rect.left;
+                this.lastY = e.clientY - rect.top;
+            }
+            
+            draw(e) {
+                if (!this.isDrawing) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.lastX, this.lastY);
+                this.ctx.lineTo(currentX, currentY);
+                this.ctx.stroke();
+                
+                this.lastX = currentX;
+                this.lastY = currentY;
+            }
+            
+            stopDrawing() {
+                if (this.isDrawing) {
+                    this.isDrawing = false;
+                    this.saveState();
+                }
+            }
+            
+            clear() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.history = [];
+                this.historyIndex = -1;
+                this.saveState();
+            }
+            
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.restoreState();
+                }
+            }
+            
+            saveState() {
+                this.historyIndex++;
+                if (this.historyIndex < this.history.length) {
+                    this.history.length = this.historyIndex;
+                }
+                this.history.push(this.canvas.toDataURL());
+            }
+            
+            restoreState() {
+                if (this.history[this.historyIndex]) {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                        this.ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = this.history[this.historyIndex];
+                }
+            }
+            
+            getSignatureData() {
+                return this.canvas.toDataURL('image/png');
+            }
+            
+            isEmpty() {
+                const blank = document.createElement('canvas');
+                blank.width = this.canvas.width;
+                blank.height = this.canvas.height;
+                return this.canvas.toDataURL() === blank.toDataURL();
+            }
+        }
+        
+        class SignatureApp {
+            constructor() {
+                this.signatureCanvas = new SignatureCanvas('signatureCanvas');
+                this.bindEvents();
+            }
+            
+            bindEvents() {
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.signatureCanvas.clear();
+                });
+                
+                document.getElementById('undoBtn').addEventListener('click', () => {
+                    this.signatureCanvas.undo();
+                });
+                
+                document.getElementById('previewBtn').addEventListener('click', () => {
+                    this.showPreview();
+                });
+                
+                document.getElementById('submitBtn').addEventListener('click', () => {
+                    this.submitSignature();
+                });
+            }
+            
+            showPreview() {
+                if (this.signatureCanvas.isEmpty()) {
+                    this.showAlert('서명을 먼저 작성해주세요.', 'danger');
+                    return;
+                }
+                
+                const signatureData = this.signatureCanvas.getSignatureData();
+                document.getElementById('previewImage').src = signatureData;
+                document.getElementById('signaturePreview').style.display = 'block';
+            }
+            
+            async submitSignature() {
+                if (this.signatureCanvas.isEmpty()) {
+                    this.showAlert('서명을 먼저 작성해주세요.', 'danger');
+                    return;
+                }
+                
+                if (!confirm('서명을 완료하시겠습니까? 완료 후에는 수정할 수 없습니다.')) {
+                    return;
+                }
+                
+                this.showLoading(true);
+                
+                try {
+                    const signatureData = this.signatureCanvas.getSignatureData();
+                    
+                    const response = await fetch(`/api/sign/{{ sign_request.token }}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            signature: signatureData
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.showAlert('서명이 완료되었습니다!', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/sign/{{ sign_request.token }}/success';
+                        }, 2000);
+                    } else {
+                        this.showAlert(result.error || '서명 처리 중 오류가 발생했습니다.', 'danger');
+                    }
+                } catch (error) {
+                    this.showAlert('서명 처리 중 오류가 발생했습니다.', 'danger');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+            
+            showLoading(show) {
+                document.getElementById('loading').style.display = show ? 'block' : 'none';
+            }
+            
+            showAlert(message, type) {
+                const alertContainer = document.getElementById('alertContainer');
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type}`;
+                alertDiv.textContent = message;
+                alertContainer.innerHTML = '';
+                alertContainer.appendChild(alertDiv);
+                
+                setTimeout(() => {
+                    alertDiv.remove();
+                }, 5000);
+            }
+        }
+        
+        // 앱 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            new SignatureApp();
+        });
+    </script>
+</body>
+</html>

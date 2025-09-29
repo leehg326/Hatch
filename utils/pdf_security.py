@@ -242,3 +242,4 @@ def create_contract_watermark(contract):
     """계약서 워터마크 생성"""
     return security_manager.create_security_watermark(contract)
 
+

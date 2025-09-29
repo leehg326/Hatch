@@ -46,3 +46,8 @@ class Config:
     # Rate Limiting
     RATELIMIT_STORAGE_URL = 'memory://'
     RATELIMIT_DEFAULT = "100 per hour"
+    
+    # Electronic Signature Configuration
+    APP_BASE_URL = os.environ.get('APP_BASE_URL') or 'http://127.0.0.1:5000'
+    SIGN_TOKEN_TTL_DAYS = int(os.environ.get('SIGN_TOKEN_TTL_DAYS') or 7)
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL') or 'admin@example.com'

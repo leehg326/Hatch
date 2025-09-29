@@ -7,9 +7,10 @@ Authlib>=1.0
 python-dotenv>=1.0
 requests>=2.31
 PyMySQL>=1.0
-reportlab>=4.0
 Pillow>=10.0
 PyJWT>=2.8
 qrcode>=7.4
-weasyprint>=60.0
+weasyprint==60.2
+fonttools>=4.0
+PyPDF2>=3.0
 cffi>=1.15.0

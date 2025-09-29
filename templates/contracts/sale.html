@@ -4,9 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>부동산 매매계약서</title>
-    <link rel="stylesheet" href="/static/css/print.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}?v=2025092901">
+    <style>
+        /* 한글 폰트 강제 설정 */
+        * {
+            font-family: 'Malgun Gothic', '맑은 고딕', 'Dotum', '돋움', sans-serif !important;
+        }
+        body, html {
+            font-family: 'Malgun Gothic', '맑은 고딕', 'Dotum', '돋움', sans-serif !important;
+        }
+    </style>
 </head>
 <body>
+    <div style="padding:8px; background:#eef; border:1px solid #ccd; margin-bottom:8px;">
+        폰트 테스트: 가나다라마바사 아자차카타파하 12345 ABCDE — Noto Sans KR 적용됨?
+    </div>
     <div class="contract-container">
         <!-- 계약서 헤더 -->
         <div class="contract-header">
@@ -164,10 +176,10 @@
                 <div class="signature-box">
                     <div class="signature-label">매도인</div>
                     <div class="signature-field">
-                        {% if contract.signatures %}
-                            {% for sig in contract.signatures %}
-                                {% if sig.role == 'SELLER' and sig.image_path %}
-                                    <img src="file://{{ sig.image_path }}" alt="매도인 서명" class="signature-image">
+                        {% if signatures %}
+                            {% for sig in signatures %}
+                                {% if sig.role.value == 'SELLER' and sig.signature_image_path %}
+                                    <img src="/static/{{ sig.signature_image_path }}" alt="매도인 서명" class="signature-image">
                                 {% endif %}
                             {% endfor %}
                         {% endif %}
@@ -178,10 +190,10 @@
                 <div class="signature-box">
                     <div class="signature-label">매수인</div>
                     <div class="signature-field">
-                        {% if contract.signatures %}
-                            {% for sig in contract.signatures %}
-                                {% if sig.role == 'BUYER' and sig.image_path %}
-                                    <img src="file://{{ sig.image_path }}" alt="매수인 서명" class="signature-image">
+                        {% if signatures %}
+                            {% for sig in signatures %}
+                                {% if sig.role.value == 'BUYER' and sig.signature_image_path %}
+                                    <img src="/static/{{ sig.signature_image_path }}" alt="매수인 서명" class="signature-image">
                                 {% endif %}
                             {% endfor %}
                         {% endif %}
@@ -192,10 +204,10 @@
                 <div class="signature-box">
                     <div class="signature-label">중개인</div>
                     <div class="signature-field">
-                        {% if contract.signatures %}
-                            {% for sig in contract.signatures %}
-                                {% if sig.role == 'AGENT' and sig.image_path %}
-                                    <img src="file://{{ sig.image_path }}" alt="중개인 서명" class="signature-image">
+                        {% if signatures %}
+                            {% for sig in signatures %}
+                                {% if sig.role.value == 'AGENT' and sig.signature_image_path %}
+                                    <img src="/static/{{ sig.signature_image_path }}" alt="중개인 서명" class="signature-image">
                                 {% endif %}
                             {% endfor %}
                         {% endif %}
